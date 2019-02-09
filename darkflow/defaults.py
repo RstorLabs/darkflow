@@ -7,6 +7,7 @@ class argHandler(dict):
     
     def setDefaults(self):
         self.define('imgdir', './sample_img/', 'path to testing directory with images')
+        self.define('output', './output', 'path to save json file')
         self.define('binary', './bin/', 'path to .weights directory')
         self.define('config', './cfg/', 'path to .cfg directory')
         self.define('dataset', '../pascal/VOCdevkit/IMG/', 'path to dataset directory')

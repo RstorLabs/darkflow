@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import pickle
 from multiprocessing.pool import ThreadPool
+from fum import fum_yield
 
 train_stats = (
     'Training statistics: \n'
@@ -105,44 +106,48 @@ import math
 
 def predict(self):
     inp_path = self.FLAGS.imgdir
-    all_inps = os.listdir(inp_path)
-    all_inps = [i for i in all_inps if self.framework.is_inp(i)]
-    if not all_inps:
-        msg = 'Failed to find any images in {} .'
-        exit('Error: {}'.format(msg.format(inp_path)))
 
-    batch = min(self.FLAGS.batch, len(all_inps))
+    while True:
+        fum_yield()
+        
+        all_inps = os.listdir(inp_path)
+        all_inps = [i for i in all_inps if self.framework.is_inp(i)]
+        if not all_inps:
+            msg = 'Failed to find any images in {} .'
+            exit('Error: {}'.format(msg.format(inp_path)))
 
-    # predict in batches
-    n_batch = int(math.ceil(len(all_inps) / batch))
-    for j in range(n_batch):
-        from_idx = j * batch
-        to_idx = min(from_idx + batch, len(all_inps))
+        batch = min(self.FLAGS.batch, len(all_inps))
 
-        # collect images input in the batch
-        this_batch = all_inps[from_idx:to_idx]
-        inp_feed = pool.map(lambda inp: (
-            np.expand_dims(self.framework.preprocess(
-                os.path.join(inp_path, inp)), 0)), this_batch)
+        # predict in batches
+        n_batch = int(math.ceil(len(all_inps) / batch))
+        for j in range(n_batch):
+            from_idx = j * batch
+            to_idx = min(from_idx + batch, len(all_inps))
 
-        # Feed to the net
-        feed_dict = {self.inp : np.concatenate(inp_feed, 0)}    
-        self.say('Forwarding {} inputs ...'.format(len(inp_feed)))
-        start = time.time()
-        out = self.sess.run(self.out, feed_dict)
-        stop = time.time(); last = stop - start
-        self.say('Total time = {}s / {} inps = {} ips'.format(
-            last, len(inp_feed), len(inp_feed) / last))
+            # collect images input in the batch
+            this_batch = all_inps[from_idx:to_idx]
+            inp_feed = pool.map(lambda inp: (
+                np.expand_dims(self.framework.preprocess(
+                    os.path.join(inp_path, inp)), 0)), this_batch)
 
-        # Post processing
-        self.say('Post processing {} inputs ...'.format(len(inp_feed)))
-        start = time.time()
-        pool.map(lambda p: (lambda i, prediction:
-            self.framework.postprocess(
-               prediction, os.path.join(inp_path, this_batch[i])))(*p),
-            enumerate(out))
-        stop = time.time(); last = stop - start
+            # Feed to the net
+            feed_dict = {self.inp : np.concatenate(inp_feed, 0)}    
+            self.say('Forwarding {} inputs ...'.format(len(inp_feed)))
+            start = time.time()
+            out = self.sess.run(self.out, feed_dict)
+            stop = time.time(); last = stop - start
+            self.say('Total time = {}s / {} inps = {} ips'.format(
+                last, len(inp_feed), len(inp_feed) / last))
 
-        # Timing
-        self.say('Total time = {}s / {} inps = {} ips'.format(
-            last, len(inp_feed), len(inp_feed) / last))
+            # Post processing
+            self.say('Post processing {} inputs ...'.format(len(inp_feed)))
+            start = time.time()
+            pool.map(lambda p: (lambda i, prediction:
+                self.framework.postprocess(
+                   prediction, os.path.join(inp_path, this_batch[i])))(*p),
+                enumerate(out))
+            stop = time.time(); last = stop - start
+
+            # Timing
+            self.say('Total time = {}s / {} inps = {} ips'.format(
+                last, len(inp_feed), len(inp_feed) / last))

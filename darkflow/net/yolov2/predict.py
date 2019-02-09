@@ -59,7 +59,7 @@ def postprocess(self, net_out, im, save = True):
 
 	if not save: return imgcv
 
-	outfolder = os.path.join(self.FLAGS.imgdir, 'out')
+	outfolder = os.path.join(self.FLAGS.output)
 	img_name = os.path.join(outfolder, os.path.basename(im))
 	if self.FLAGS.json:
 		textJSON = json.dumps(resultsForJSON)
