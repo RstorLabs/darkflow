@@ -1,10 +1,12 @@
 import os
+import shutil
 import time
 import numpy as np
 import tensorflow as tf
 import pickle
 from multiprocessing.pool import ThreadPool
-from fum import fum_yield
+import requests
+# from fum import fum_yield
 
 train_stats = (
     'Training statistics: \n'
@@ -106,10 +108,27 @@ import math
 
 def predict(self):
     inp_path = self.FLAGS.imgdir
+    url = "http://localhost:1337"
+
 
     while True:
-        fum_yield()
-        
+        # next line hard-coded because using for demo 
+        # and also don't want to delete things willy-nilly
+        folder = '/tmp/input'
+        for the_file in os.listdir(folder):
+            file_path = os.path.join(folder, the_file)
+            try:
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+                #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+            except Exception as e:
+                print(e)
+        # fum_yield()
+        r = requests.get(url)
+        image_binary = r.content
+        with open(inp_path+"/image.jpg", "wb") as f:
+            f.write(image_binary)
+            
         all_inps = os.listdir(inp_path)
         all_inps = [i for i in all_inps if self.framework.is_inp(i)]
         if not all_inps:
@@ -144,10 +163,13 @@ def predict(self):
             start = time.time()
             pool.map(lambda p: (lambda i, prediction:
                 self.framework.postprocess(
-                   prediction, os.path.join(inp_path, this_batch[i])))(*p),
+                    prediction, os.path.join(inp_path, this_batch[i])))(*p),
                 enumerate(out))
             stop = time.time(); last = stop - start
 
             # Timing
             self.say('Total time = {}s / {} inps = {} ips'.format(
                 last, len(inp_feed), len(inp_feed) / last))
+        
+        with open("/tmp/output/image.jpg", "rb") as f2:
+            requests.post(url,data = f2)
