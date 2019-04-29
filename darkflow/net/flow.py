@@ -6,6 +6,7 @@ import tensorflow as tf
 import pickle
 from multiprocessing.pool import ThreadPool
 import requests
+import uuid 
 # from fum import fum_yield
 
 train_stats = (
@@ -109,6 +110,7 @@ import math
 def predict(self):
     inp_path = self.FLAGS.imgdir
     url = "http://localhost:1337"
+    randomizer = str(uuid.uuid4())
 
 
     while True:
@@ -125,8 +127,11 @@ def predict(self):
                 print(e)
         # fum_yield()
         r = requests.get(url)
+        if r.status_code != 200:
+            time.sleep(.125)
+            continue
         image_binary = r.content
-        with open(inp_path+"/image.jpg", "wb") as f:
+        with open(inp_path+"/image"+randomizer+".jpg", "wb") as f:
             f.write(image_binary)
             
         all_inps = os.listdir(inp_path)
@@ -171,5 +176,7 @@ def predict(self):
             self.say('Total time = {}s / {} inps = {} ips'.format(
                 last, len(inp_feed), len(inp_feed) / last))
         
-        with open("/tmp/output/image.jpg", "rb") as f2:
+        with open("/tmp/output/image"+randomizer+".jpg", "rb") as f2:
             requests.post(url,data = f2)
+        
+        # time.sleep(.125)
