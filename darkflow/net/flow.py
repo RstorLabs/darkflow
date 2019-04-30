@@ -6,7 +6,8 @@ import tensorflow as tf
 import pickle
 from multiprocessing.pool import ThreadPool
 import requests
-import uuid 
+import uuid
+import pathlib
 # from fum import fum_yield
 
 train_stats = (
@@ -108,9 +109,10 @@ def return_predict(self, im):
 import math
 
 def predict(self):
-    inp_path = self.FLAGS.imgdir
     url = "http://localhost:1337"
     randomizer = str(uuid.uuid4())
+    inp_path = os.path.join(self.FLAGS.imgdir,randomizer)
+    pathlib.Path(inp_path).mkdir()
 
 
     while True:
@@ -131,6 +133,7 @@ def predict(self):
             time.sleep(.125)
             continue
         image_binary = r.content
+
         with open(inp_path+"/image"+randomizer+".jpg", "wb") as f:
             f.write(image_binary)
             
@@ -143,38 +146,45 @@ def predict(self):
         batch = min(self.FLAGS.batch, len(all_inps))
 
         # predict in batches
-        n_batch = int(math.ceil(len(all_inps) / batch))
-        for j in range(n_batch):
-            from_idx = j * batch
-            to_idx = min(from_idx + batch, len(all_inps))
+        # n_batch = int(math.ceil(len(all_inps) / batch))
+        
+        this_batch = [inp_path+"/image"+randomizer+".jpg"]
 
-            # collect images input in the batch
-            this_batch = all_inps[from_idx:to_idx]
-            inp_feed = pool.map(lambda inp: (
-                np.expand_dims(self.framework.preprocess(
-                    os.path.join(inp_path, inp)), 0)), this_batch)
+        inp_feed = pool.map(lambda inp: (
+            np.expand_dims(self.framework.preprocess(
+                os.path.join(inp_path, inp)), 0)), this_batch)
 
-            # Feed to the net
-            feed_dict = {self.inp : np.concatenate(inp_feed, 0)}    
-            self.say('Forwarding {} inputs ...'.format(len(inp_feed)))
-            start = time.time()
-            out = self.sess.run(self.out, feed_dict)
-            stop = time.time(); last = stop - start
-            self.say('Total time = {}s / {} inps = {} ips'.format(
-                last, len(inp_feed), len(inp_feed) / last))
+        # for j in range(n_batch):
+        #     from_idx = j * batch
+        #     to_idx = min(from_idx + batch, len(all_inps))
 
-            # Post processing
-            self.say('Post processing {} inputs ...'.format(len(inp_feed)))
-            start = time.time()
-            pool.map(lambda p: (lambda i, prediction:
-                self.framework.postprocess(
-                    prediction, os.path.join(inp_path, this_batch[i])))(*p),
-                enumerate(out))
-            stop = time.time(); last = stop - start
+        #     # collect images input in the batch
+        #     this_batch = all_inps[from_idx:to_idx]
+        #     inp_feed = pool.map(lambda inp: (
+        #         np.expand_dims(self.framework.preprocess(
+        #             os.path.join(inp_path, inp)), 0)), this_batch)
 
-            # Timing
-            self.say('Total time = {}s / {} inps = {} ips'.format(
-                last, len(inp_feed), len(inp_feed) / last))
+        #     # Feed to the net
+        feed_dict = {self.inp : np.concatenate(inp_feed, 0)}    
+        self.say('Forwarding {} inputs ...'.format(len(inp_feed)))
+        start = time.time()
+        out = self.sess.run(self.out, feed_dict)
+        stop = time.time(); last = stop - start
+        self.say('Total time = {}s / {} inps = {} ips'.format(
+            last, len(inp_feed), len(inp_feed) / last))
+
+        # Post processing
+        self.say('Post processing {} inputs ...'.format(len(inp_feed)))
+        start = time.time()
+        pool.map(lambda p: (lambda i, prediction:
+            self.framework.postprocess(
+                prediction, os.path.join(inp_path, this_batch[i])))(*p),
+            enumerate(out))
+        stop = time.time(); last = stop - start
+
+        # Timing
+        self.say('Total time = {}s / {} inps = {} ips'.format(
+            last, len(inp_feed), len(inp_feed) / last))
         
         with open("/tmp/output/image"+randomizer+".jpg", "rb") as f2:
             requests.post(url,data = f2)
