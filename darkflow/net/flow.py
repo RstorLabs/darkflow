@@ -8,6 +8,8 @@ from multiprocessing.pool import ThreadPool
 import requests
 import uuid
 import pathlib
+import cv2
+import io
 # from fum import fum_yield
 
 train_stats = (
@@ -119,25 +121,20 @@ def predict(self):
         # next line hard-coded because using for demo 
         # and also don't want to delete things willy-nilly
         folder = '/tmp/input'
-        for the_file in os.listdir(folder):
-            file_path = os.path.join(folder, the_file)
-            try:
-                if os.path.isfile(file_path):
-                    os.unlink(file_path)
-                #elif os.path.isdir(file_path): shutil.rmtree(file_path)
-            except Exception as e:
-                print(e)
-        # fum_yield()
+        
+
         r = requests.get(url)
         if r.status_code != 200:
             time.sleep(.125)
             continue
 
-        im_cv2 = cv2.imdecode(r.content)
-            
-        batch = min(self.FLAGS.batch, len(all_inps))
 
-        inp_feed = [np.expand_dims(self.framework.preprocess(im_cv2), 0))]
+        # im_cv2 = io.BytesIO(r.content)
+        # im_bytes = bytearray(im_cv2.read())
+        np_arr = np.fromstring(r.content, np.uint8)
+        im_cv2 = cv2.imdecode(np_arr, 1)
+
+        inp_feed = [np.expand_dims(self.framework.preprocess(im_cv2), 0)]
 
         #     # Feed to the net
         feed_dict = {self.inp : np.concatenate(inp_feed, 0)}    
@@ -147,21 +144,25 @@ def predict(self):
         stop = time.time(); last = stop - start
         self.say('Total time = {}s / {} inps = {} ips'.format(
             last, len(inp_feed), len(inp_feed) / last))
+        # print(out[0])
+        output = out[0]
 
         # Post processing
         self.say('Post processing {} inputs ...'.format(len(inp_feed)))
         start = time.time()
-        pool.map(lambda p: (lambda i, prediction:
-            self.framework.postprocess(
-                prediction, os.path.join(inp_path, this_batch[i])))(*p),
-            enumerate(out))
+        result = self.framework.postprocess(output, im_cv2, save = False)
+        # pool.map(lambda p: (lambda i, prediction:
+        #     self.framework.postprocess(
+        #         prediction, os.path.join(inp_path, this_batch[i])))(*p),
+        #     enumerate(out))
         stop = time.time(); last = stop - start
 
         # Timing
         self.say('Total time = {}s / {} inps = {} ips'.format(
             last, len(inp_feed), len(inp_feed) / last))
-        
-        with open("/tmp/output/image"+randomizer+".jpg", "rb") as f2:
-            requests.post(url,data = f2)
+        jframe = cv2.imencode(".jpg", result)
+        j_img = io.BytesIO(jframe[1])
+        jbytes = bytearray(j_img.read())
+        requests.post(url, jbytes)
         
         # time.sleep(.125)
