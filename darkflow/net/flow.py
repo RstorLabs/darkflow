@@ -132,37 +132,12 @@ def predict(self):
         if r.status_code != 200:
             time.sleep(.125)
             continue
-        image_binary = r.content
 
-        with open(inp_path+"/image"+randomizer+".jpg", "wb") as f:
-            f.write(image_binary)
+        im_numpy = cv2.imdecode(".jpg", r.content)
             
-        all_inps = os.listdir(inp_path)
-        all_inps = [i for i in all_inps if self.framework.is_inp(i)]
-        if not all_inps:
-            msg = 'Failed to find any images in {} .'
-            exit('Error: {}'.format(msg.format(inp_path)))
-
         batch = min(self.FLAGS.batch, len(all_inps))
 
-        # predict in batches
-        # n_batch = int(math.ceil(len(all_inps) / batch))
-        
-        this_batch = [inp_path+"/image"+randomizer+".jpg"]
-
-        inp_feed = pool.map(lambda inp: (
-            np.expand_dims(self.framework.preprocess(
-                os.path.join(inp_path, inp)), 0)), this_batch)
-
-        # for j in range(n_batch):
-        #     from_idx = j * batch
-        #     to_idx = min(from_idx + batch, len(all_inps))
-
-        #     # collect images input in the batch
-        #     this_batch = all_inps[from_idx:to_idx]
-        #     inp_feed = pool.map(lambda inp: (
-        #         np.expand_dims(self.framework.preprocess(
-        #             os.path.join(inp_path, inp)), 0)), this_batch)
+        inp_feed = [np.expand_dims(self.framework.preprocess(im_numpy), 0))]
 
         #     # Feed to the net
         feed_dict = {self.inp : np.concatenate(inp_feed, 0)}    
