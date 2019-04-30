@@ -133,11 +133,11 @@ def predict(self):
             time.sleep(.125)
             continue
 
-        im_numpy = cv2.imdecode(".jpg", r.content)
+        im_cv2 = cv2.imdecode(r.content)
             
         batch = min(self.FLAGS.batch, len(all_inps))
 
-        inp_feed = [np.expand_dims(self.framework.preprocess(im_numpy), 0))]
+        inp_feed = [np.expand_dims(self.framework.preprocess(im_cv2), 0))]
 
         #     # Feed to the net
         feed_dict = {self.inp : np.concatenate(inp_feed, 0)}    
