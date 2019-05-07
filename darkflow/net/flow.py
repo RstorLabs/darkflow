@@ -10,6 +10,9 @@ import uuid
 import pathlib
 import cv2
 import io
+import socket    #for sockets
+import sys    #for exit
+
 # from fum import fum_yield
 
 train_stats = (
@@ -20,6 +23,38 @@ train_stats = (
     '\tBackup every  : {}'
 )
 pool = ThreadPool()
+
+def discover_host():
+    # create dgram udp socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    except socket.error:
+        print ('Failed to create socket')
+        sys.exit()
+
+    host = '255.255.255.255';
+    port = 8789;
+
+    while(1) :
+        msg = "hello"
+        msg = msg.encode()
+        try :
+            #Set the whole string
+            s.sendto(msg, (host, port))
+            
+            # receive data from client (data, addr)
+            d = s.recvfrom(1024)
+            reply = d[0]
+            addr = d[1]
+            
+            print ('Server reply : ' + str(reply))
+            print ('IP address : ' + str(addr[0]) +' port : '+str(addr[1]))
+            if reply == b'I am a Coltrane Demo Host':
+                return addr
+        except (socket.error, msg):
+            print ('Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
+            sys.exit()
 
 def _save_ckpt(self, step, loss_profile):
     file = '{}-{}{}'
@@ -111,7 +146,8 @@ def return_predict(self, im):
 import math
 
 def predict(self):
-    url = "http://localhost:1337"
+    addr = discover_host()
+    url = "http://"+addr[0]+":1337"
     randomizer = str(uuid.uuid4())
     inp_path = os.path.join(self.FLAGS.imgdir,randomizer)
     pathlib.Path(inp_path).mkdir()
