@@ -146,7 +146,10 @@ def return_predict(self, im):
 import math
 
 def predict(self):
-    addr = discover_host()
+    try:
+        addr = os.environ["HOST_IP"]
+    except:
+        addr = discover_host()
     url = "http://"+addr[0]+":1337"
     randomizer = str(uuid.uuid4())
     inp_path = os.path.join(self.FLAGS.imgdir,randomizer)
