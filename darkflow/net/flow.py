@@ -150,7 +150,8 @@ def predict(self):
         addr = os.environ["HOST_IP"]
     except:
         addr = discover_host()
-    url = "http://"+addr[0]+":1337"
+        addr = addr[0]
+    url = "http://"+addr+":1337"
     randomizer = str(uuid.uuid4())
     inp_path = os.path.join(self.FLAGS.imgdir,randomizer)
     pathlib.Path(inp_path).mkdir()
