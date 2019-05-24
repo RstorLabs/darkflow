@@ -24,11 +24,17 @@ train_stats = (
 )
 pool = ThreadPool()
 
+def maybe_bind_1701(s):
+    try:
+        s.bind(("",1701))
+    except:
+        pass
+
 def discover_host():
     # create dgram udp socket
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.bind(("",1701))
+        maybe_bind_1701(s)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     except socket.error:
         print ('Failed to create socket')
