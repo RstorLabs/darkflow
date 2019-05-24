@@ -28,6 +28,7 @@ def discover_host():
     # create dgram udp socket
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.bind(("",1701))
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     except socket.error:
         print ('Failed to create socket')
@@ -35,14 +36,14 @@ def discover_host():
 
     host = '255.255.255.255';
     port = 8789;
-
     while(1) :
         msg = "hello"
         msg = msg.encode()
         try :
             #Set the whole string
+            print("check 1")
             s.sendto(msg, (host, port))
-            
+            print("check 2")
             # receive data from client (data, addr)
             d = s.recvfrom(1024)
             reply = d[0]
@@ -52,8 +53,8 @@ def discover_host():
             print ('IP address : ' + str(addr[0]) +' port : '+str(addr[1]))
             if reply == b'I am a Coltrane Demo Host':
                 return addr
-        except (socket.error, msg):
-            print ('Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
+        except Exception as e:
+            print ('Error: ' + str(e))
             sys.exit()
 
 def _save_ckpt(self, step, loss_profile):
