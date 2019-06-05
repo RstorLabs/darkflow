@@ -12,6 +12,7 @@ import cv2
 import io
 import socket    #for sockets
 import sys    #for exit
+import datetime
 
 # from fum import fum_yield
 
@@ -174,7 +175,7 @@ def predict(self):
         if r.status_code != 200:
             time.sleep(.125)
             continue
-
+        proc_start = datetime.datetime.now()
 
         # im_cv2 = io.BytesIO(r.content)
         # im_bytes = bytearray(im_cv2.read())
@@ -210,6 +211,11 @@ def predict(self):
         jframe = cv2.imencode(".jpg", result)
         j_img = io.BytesIO(jframe[1])
         jbytes = bytearray(j_img.read())
-        requests.post(url, jbytes)
+        proc_done = datetime.datetime.now()
+        capture_time = r.headers["capture-time"]
+        print(capture_time)
+        proc_time = proc_done - proc_start
+        headers = {'capture-time': capture_time, "process-time": str(proc_time.total_seconds())}
+        requests.post(url, jbytes, headers=headers)
         
         # time.sleep(.125)
